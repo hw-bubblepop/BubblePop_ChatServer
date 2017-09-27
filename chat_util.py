@@ -38,7 +38,7 @@ class Hall:
 
     def handle_msg(self, player, msg, conn_list):
 
-        print(player.name + " says: " + msg)
+        print(player.name + " says: " + msg[:len(msg) - 1] + " in " + player.now_room)
         # set name
         # query: #name <name>
         if "#name" in msg:
@@ -49,31 +49,31 @@ class Hall:
             player.socket.sendall(b'hello ' + name.encode() + b'\n')
 
         #make room
-        #query: #make <room_name> <user1> <user2> <user3> ...
+        #query: #make <room_id> <room_name>
         elif "#make" in msg:
             if len(msg.split()) >= 3:
-                room_name = msg.split()[1]
-                new_room = Room(room_name)
+                room_id = msg.split()[1]
+                room_name = msg.split()[2]
+                new_room = Room(room_id, room_name)
                 self.rooms[new_room.id] = new_room
-                newRoomPlayers = msg.split()[2:]
-                for p in conn_list:
-                    if isinstance(p, Player):
-                        if(p.name in newRoomPlayers):
-                            self.rooms[new_room.id].players.append(p)
-                msg = b'success room_name:'+room_name.encode()+b' room_id:'+new_room.id.encode()+b' players:'
-                for p in newRoomPlayers:
-                    msg+=p.encode()
-                    msg+=b','
-                msg+=b'\n'
+                msg = b'success '+b'make room id='+new_room.id.encode()+b'\n'
                 player.socket.sendall(msg)
 
             else:
                 player.socket.sendall(b'error')
+        # reg room
+        # query: #reg <room_id>
+        elif "#reg" in msg:
+            if len(msg.split()) >= 2:
+                room_id = msg.split()[1]
+                self.rooms[room_id].players.append(player)
+                msg = player.name.encode() + b' regist in ' + room_id.encode() + b'\n'
+                print(player.name, 'regist in', room_id)
+                self.rooms[room_id].broadcast(player, msg)
 
         # join room
         # query: #join <room_id>
         elif "#join" in msg:
-            print(self.rooms)
             if len(msg.split()) >= 2:
                 room_id = msg.split()[1]
                 if player not in self.rooms[room_id].players:
@@ -105,7 +105,8 @@ class Hall:
         else:
             # check if in a room or not first
             if player.now_room != "hall":
-                self.rooms[player.now_room].broadcast(player, msg.encode())
+                pre = player.name + ':'
+                self.rooms[player.now_room].broadcast(player, pre.encode() +  msg.encode())
             else:
                 # msg = 'You are currently not in any room! \n' \
                 #    + 'Use [<list>] to see available rooms! \n' \
@@ -120,21 +121,19 @@ class Hall:
 
     
 class Room:
-    def __init__(self, name):
+    def __init__(self, id, name):
         self.players = [] # a list of sockets
         self.name = name
-        self.id = str(uuid.uuid4()) 
+        self.id = id
 
     def welcome_new(self, from_player):
-        msg = self.name + " welcomes: " + from_player.name + '\n'
+        msg = self.id + " welcomes: " + from_player.name + '\n'
         for player in self.players:
             player.socket.sendall(msg.encode())
     
     def broadcast(self, from_player, msg):
-        msg = from_player.name.encode() + b":" + msg
-        print(len(self.players))
+        # msg = from_player.name.encode() + b":" + msg
         for player in self.players:
-            print(player.name)
             player.socket.sendall(msg)
 
     def remove_player(self, player):
