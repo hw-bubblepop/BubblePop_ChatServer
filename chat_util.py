@@ -1,7 +1,11 @@
-# implementing 3-tier structure: Hall --> Room --> Clients; 
-# 14-Jun-2013
+# -*- coding: utf-8 -*- 
 
 import socket, pdb, uuid
+import sys
+import datetime
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
 
 MAX_CLIENTS = 30
 PORT = 3115
@@ -29,24 +33,24 @@ class Hall:
         if len(self.rooms) == 0:
             msg = 'Oops, no active rooms currently. Create your own!\n' \
                 + 'Use [<join> room_name] to create a room.\n'
-            player.socket.sendall(msg.encode())
+            player.socket.sendall(msg.encode('utf-8'))
         else:
             msg = 'Listing current rooms...\n'
             for room in self.rooms:
                 msg += room + ": " + str(len(self.rooms[room].players)) + " player(s)\n"
-            player.socket.sendall(msg.encode())
+            player.socket.sendall(msg.encode('utf-8'))
 
     def handle_msg(self, player, msg, conn_list):
-
+        
         print(player.name + " says: " + msg[:len(msg) - 1] + " in " + player.now_room)
         # set name
         # query: #name <name>
         if "#name" in msg:
             # msg = #init# <name>
             name = msg.split()[1]
-            player.name = name
+            player.name = name.encode('utf-8')
             print("New connection from:", player.name)
-            player.socket.sendall(b'hello ' + name.encode() + b'\n')
+            player.socket.sendall(b'hello ' + name.encode('utf-8') + b'\n')
 
         #make room
         #query: #make <room_id> <room_name>
@@ -56,7 +60,7 @@ class Hall:
                 room_name = msg.split()[2]
                 new_room = Room(room_id, room_name)
                 self.rooms[new_room.id] = new_room
-                msg = b'success '+b'make room id='+new_room.id.encode()+b'\n'
+                msg = b'success '+b'make room id='+new_room.id.encode('utf-8')+b'\n'
                 player.socket.sendall(msg)
 
             else:
@@ -67,7 +71,7 @@ class Hall:
             if len(msg.split()) >= 2:
                 room_id = msg.split()[1]
                 self.rooms[room_id].players.append(player)
-                msg = player.name.encode() + b' regist in ' + room_id.encode() + b'\n'
+                msg = player.name.encode('utf-8') + b' regist in ' + room_id.encode('utf-8') + b'\n'
                 print(player.name, 'regist in', room_id)
                 self.rooms[room_id].broadcast(player, msg)
 
@@ -102,11 +106,19 @@ class Hall:
             player.socket.sendall(QUIT_STRING.encode())
             self.remove_player(player)
 
+        elif "#ai" in msg:
+            now = datetime.datetime.now()
+            pre = 'ai/' + now.strftime('%Y-%m-%d %H:%M:%S:') + '/'
+            re = "두 분 모두 안드로이드 개발자시 군요? 혹시 Kotlin에 대해 아시나요??"
+            self.rooms[player.now_room].broadcast(player, pre.encode('utf-8') + re.encode('utf-8'))
+
         else:
             # check if in a room or not first
             if player.now_room != "hall":
-                pre = player.name + ':'
-                self.rooms[player.now_room].broadcast(player, pre.encode() +  msg.encode())
+                now = datetime.datetime.now()
+                pre = 'msg/'+now.strftime('%Y-%m-%d %H:%M:%S:')+'/'+player.name + '/'
+
+                self.rooms[player.now_room].broadcast(player, pre.encode('utf-8') +  msg.encode())
             else:
                 # msg = 'You are currently not in any room! \n' \
                 #    + 'Use [<list>] to see available rooms! \n' \
@@ -138,7 +150,7 @@ class Room:
 
     def remove_player(self, player):
         self.players.remove(player)
-        leave_msg = player.name.encode() + b"has left the room\n"
+        leave_msg = player.name.encode('utf-8') + b"has left the room\n"
         self.broadcast(player, leave_msg)
 
 class Player:

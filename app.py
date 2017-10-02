@@ -1,12 +1,8 @@
 # -*- coding: utf-8 -*- 
 
-from flask import Flask, g
-from flask import request as req
 import chat_util 
 from chat_util import Hall, Room, Player
 import socket, threading, select
-
-app = Flask(__name__)
 
 HOST = ''
 PORT = 2233
@@ -33,31 +29,15 @@ def launchTCPServer():
 
             else:
                 msg = player.socket.recv(1024)
+                print('msg : ', msg)
                 if msg :
-                    msg = msg.decode()
+                    msg = msg.decode('utf-8')
                     hall.handle_msg(player, msg, conn_list)
                 else:
                     player.socket.close()
                     conn_list.remove(player)
 
-@app.route("/")
-def index():
-    return "Server running at 2323 port \n TCP Server running at 3115 port"
-
-@app.route("/join", methods=["POST"])
-def join():
-    token = req.form['token']
-    return "success"
-
-@app.route("/send", methods=["POST"])
-def send():
-    msg = req.form['msg']
-    g.server_conn.sendAll(msg.encode())
-    return msg
 
 if __name__ == "__main__":
-    t = threading.Thread(target=launchTCPServer)
-    t.daemon = True
-    t.start()
-    app.run(host=HOST, port=PORT)
+    launchTCPServer()
 
